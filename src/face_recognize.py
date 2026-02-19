@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import os
 from datetime import datetime
+from liveness import detect_liveness
 
 def mark_attendance(name):
     os.makedirs("attendance", exist_ok=True)
@@ -36,6 +37,10 @@ def recognize_faces():
     face_detector = cv2.CascadeClassifier(
         cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
     )
+
+    if not detect_liveness():
+        print("❌ Liveness failed")
+        exit()
 
     print("🎥 Starting attendance system...")
 
