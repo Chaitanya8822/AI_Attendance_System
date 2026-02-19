@@ -1,6 +1,9 @@
-# Authentication Module
-# Handles user authentication and session management
 import sqlite3
+import hashlib
+
+# 🔐 Hash password
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 def create_user_table():
     conn = sqlite3.connect("database.db")
@@ -20,7 +23,10 @@ def add_user(username, password):
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
 
-    c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+    hashed_password = hash_password(password)
+
+    c.execute("INSERT INTO users (username, password) VALUES (?, ?)", 
+              (username, hashed_password))
 
     conn.commit()
     conn.close()
@@ -29,7 +35,11 @@ def login_user(username, password):
     conn = sqlite3.connect("database.db")
     c = conn.cursor()
 
-    c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+    hashed_password = hash_password(password)
+
+    c.execute("SELECT * FROM users WHERE username=? AND password=?", 
+              (username, hashed_password))
+
     data = c.fetchone()
 
     conn.close()
