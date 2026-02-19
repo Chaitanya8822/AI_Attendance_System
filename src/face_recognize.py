@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import os
 from datetime import datetime
-from liveness import detect_liveness
+from src.liveness import detect_liveness
 
 def mark_attendance(name):
     os.makedirs("attendance", exist_ok=True)
@@ -76,6 +76,3 @@ def recognize_faces():
 
     cam.release()
     cv2.destroyAllWindows()
-
-if __name__ == "__main__":
-    recognize_faces()

@@ -43,7 +43,3 @@ def capture_faces(user_name):
     cv2.destroyAllWindows()
 
     print("✅ Face data collected successfully!")
-
-if __name__ == "__main__":
-    name = input("Enter user name: ")
-    capture_faces(name)
