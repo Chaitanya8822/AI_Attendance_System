@@ -1,48 +1,62 @@
-# AI Attendance System Main Application
 import streamlit as st
+from src.auth import create_user_table, add_user, login_user
 import os
 import pandas as pd
 
-st.set_page_config(page_title="AI Attendance System", layout="centered")
+create_user_table()
 
-st.title("🎯 AI Smart Attendance System")
+st.title("🔐 AI Attendance System Login")
 
-menu = ["Home", "Register User", "Start Attendance", "View Attendance"]
+menu = ["Login", "Signup"]
 choice = st.sidebar.selectbox("Menu", menu)
 
-# ---------------- HOME ----------------
-if choice == "Home":
-    st.subheader("Welcome 👋")
-    st.write("AI-based attendance system using Face Recognition")
+# -------- SIGNUP --------
+if choice == "Signup":
+    st.subheader("Create New Account")
 
-# ---------------- REGISTER ----------------
-elif choice == "Register User":
-    st.subheader("📸 Register New User")
+    new_user = st.text_input("Username")
+    new_password = st.text_input("Password", type="password")
 
-    name = st.text_input("Enter Name")
+    if st.button("Signup"):
+        add_user(new_user, new_password)
+        st.success("Account created successfully!")
 
-    if st.button("Capture Faces"):
-        if name:
-            os.system(f"python src/face_capture.py")
-            st.success(f"Face data captured for {name}")
+# -------- LOGIN --------
+elif choice == "Login":
+    st.subheader("Login")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        result = login_user(username, password)
+
+        if result:
+            st.success(f"Welcome {username}")
+
+            # After login → show main app
+            menu2 = ["Home", "Register", "Attendance", "View"]
+
+            choice2 = st.selectbox("Menu", menu2)
+
+            if choice2 == "Home":
+                st.write("Welcome to AI Attendance System")
+
+            elif choice2 == "Register":
+                name = st.text_input("Enter Name")
+                if st.button("Capture"):
+                    os.system("python src/face_capture.py")
+
+            elif choice2 == "Attendance":
+                if st.button("Start"):
+                    os.system("python src/face_recognize.py")
+
+            elif choice2 == "View":
+                if os.path.exists("attendance/attendance.csv"):
+                    df = pd.read_csv("attendance/attendance.csv")
+                    st.dataframe(df)
+                else:
+                    st.warning("No data")
+
         else:
-            st.warning("Please enter a name")
-
-# ---------------- ATTENDANCE ----------------
-elif choice == "Start Attendance":
-    st.subheader("🎥 Start Attendance")
-
-    if st.button("Start Camera"):
-        os.system("python src/face_recognize.py")
-
-# ---------------- VIEW ----------------
-elif choice == "View Attendance":
-    st.subheader("📊 Attendance Records")
-
-    file_path = "attendance/attendance.csv"
-
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        st.dataframe(df)
-    else:
-        st.warning("No attendance records found")
+            st.error("Invalid credentials")
