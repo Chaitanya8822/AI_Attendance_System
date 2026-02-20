@@ -36,6 +36,14 @@ button {
     width: 120px;
 }
 
+/* 👁️ Reduce ONLY password eye button */
+div[data-testid="stTextInput"] button {
+    width: 35px !important;
+    height: 35px !important;
+    padding: 0px !important;
+    border-radius: 6px !important;
+}
+     
 button:hover {
     background-color: #e68a00 !important;
 }
