@@ -27,6 +27,7 @@ st.markdown("""
 header {visibility: hidden;}
 section[data-testid="stSidebar"] {display: none;}
 
+/* Main Buttons */
 button {
     background-color: #FF9900 !important;
     color: black !important;
@@ -36,18 +37,15 @@ button {
     width: 120px;
 }
 
-/* 👁️ Reduce ONLY password eye button */
+/* 👁️ Only Password Eye Button */
 div[data-testid="stTextInput"] button {
     width: 35px !important;
     height: 35px !important;
     padding: 0px !important;
     border-radius: 6px !important;
 }
-     
-button:hover {
-    background-color: #e68a00 !important;
-}
 
+/* Inputs */
 input {
     background-color: #232F3E !important;
     color: white !important;
@@ -87,7 +85,7 @@ with col2:
         st.session_state.logged_in = False
         st.rerun()
 
-# 🕒 LIVE CLOCK
+# 🕒 CLOCK
 st.markdown(f"🕒 {datetime.now().strftime('%d %b %Y | %I:%M:%S %p')}")
 
 # ---------------- AUTH ----------------
@@ -100,12 +98,11 @@ if not st.session_state.logged_in:
     # LOGIN
     with tab1:
         col1, col2, col3 = st.columns([2,3,2])
-
         with col2:
             st.markdown("### 🔐 Login")
 
-            username = st.text_input("Username", key="login_user")
-            password = st.text_input("Password", type="password", key="login_pass")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
 
             if st.button("Login"):
                 result = login_user(username, password)
@@ -120,12 +117,11 @@ if not st.session_state.logged_in:
     # SIGNUP
     with tab2:
         col1, col2, col3 = st.columns([2,3,2])
-
         with col2:
             st.markdown("### 📝 Create Account")
 
-            new_user = st.text_input("New Username", key="signup_user")
-            new_password = st.text_input("New Password", type="password", key="signup_pass")
+            new_user = st.text_input("New Username")
+            new_password = st.text_input("New Password", type="password")
 
             if st.button("Signup"):
                 add_user(new_user, new_password)
@@ -151,7 +147,7 @@ else:
                 st.warning("No attendance data yet")
                 st.stop()
 
-            # FIX DATE & TIME
+            # FIX DATE TIME
             df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
             df["Time"] = pd.to_datetime(df["Time"], format="%H:%M:%S", errors="coerce").dt.time
 
@@ -212,7 +208,7 @@ else:
                 st.warning("No data available")
                 st.stop()
 
-            # FIX DATE & TIME
+            # FIX DATE TIME
             df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
             df["Time"] = pd.to_datetime(df["Time"], format="%H:%M:%S", errors="coerce").dt.time
 
@@ -224,12 +220,35 @@ else:
             df = df.dropna(subset=["DateTime"])
             df = df.sort_values(by="DateTime", ascending=False)
 
-            st.dataframe(df)
+            st.markdown("### 📄 Raw Attendance Data")
+            st.dataframe(df, use_container_width=True)
 
-            if not df.empty:
-                last_entry = df.iloc[0]["DateTime"]
-                st.success(f"🕒 Last Entry: {last_entry}")
+            # SUMMARY
+            st.markdown("### 📊 Attendance Summary")
 
+            summary = df.groupby("Name").agg(
+                Total_Entries=("Name", "count"),
+                Days_Present=("Date", "nunique")
+            ).reset_index()
+
+            total_days = df["Date"].nunique()
+
+            summary["Attendance %"] = ((summary["Days_Present"] / total_days) * 100).round(2)
+            summary["Attendance %"] = summary["Attendance %"].astype(str) + "%"
+
+            summary["Status"] = summary["Days_Present"].apply(
+                lambda x: "🟢 Good" if (x / total_days) * 100 >= 75 else "🔴 Low"
+            )
+
+            summary = summary.sort_values(by="Days_Present", ascending=False)
+
+            st.dataframe(summary, use_container_width=True)
+
+            # LAST ENTRY
+            last_entry = df.iloc[0]["DateTime"]
+            st.success(f"🕒 Last Entry: {last_entry.strftime('%d %b %Y | %I:%M %p')}")
+
+            # DOWNLOAD
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button("Download CSV", csv, "attendance.csv")
 
