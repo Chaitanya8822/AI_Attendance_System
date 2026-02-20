@@ -27,7 +27,6 @@ st.markdown("""
 header {visibility: hidden;}
 section[data-testid="stSidebar"] {display: none;}
 
-/* Main Buttons */
 button {
     background-color: #FF9900 !important;
     color: black !important;
@@ -37,15 +36,17 @@ button {
     width: 120px;
 }
 
-/* 👁️ Only Password Eye Button */
+/* 👁️ ONLY password eye button */
 div[data-testid="stTextInput"] button {
     width: 35px !important;
     height: 35px !important;
     padding: 0px !important;
-    border-radius: 6px !important;
 }
 
-/* Inputs */
+button:hover {
+    background-color: #e68a00 !important;
+}
+
 input {
     background-color: #232F3E !important;
     color: white !important;
@@ -95,7 +96,6 @@ if not st.session_state.logged_in:
 
     tab1, tab2 = st.tabs(["Login", "Signup"])
 
-    # LOGIN
     with tab1:
         col1, col2, col3 = st.columns([2,3,2])
         with col2:
@@ -105,8 +105,7 @@ if not st.session_state.logged_in:
             password = st.text_input("Password", type="password")
 
             if st.button("Login"):
-                result = login_user(username, password)
-                if result:
+                if login_user(username, password):
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.success(f"Welcome {username}")
@@ -114,11 +113,10 @@ if not st.session_state.logged_in:
                 else:
                     st.error("Invalid credentials")
 
-    # SIGNUP
     with tab2:
         col1, col2, col3 = st.columns([2,3,2])
         with col2:
-            st.markdown("### 📝 Create Account")
+            st.markdown("### 📝 Signup")
 
             new_user = st.text_input("New Username")
             new_password = st.text_input("New Password", type="password")
@@ -130,7 +128,7 @@ if not st.session_state.logged_in:
 # ---------------- MAIN APP ----------------
 else:
     st.success(f"Welcome {st.session_state.username}")
-    st.success("🟢 System Status: Active")
+    st.success("🟢 System Active")
 
     page = st.session_state.page
 
@@ -140,40 +138,30 @@ else:
 
         file_path = "attendance/attendance.csv"
 
-        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        if os.path.exists(file_path):
             df = pd.read_csv(file_path)
 
-            if df.empty:
-                st.warning("No attendance data yet")
-                st.stop()
+            if not df.empty:
+                df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
+                df["Time"] = pd.to_datetime(df["Time"], format="%H:%M:%S", errors="coerce").dt.time
 
-            # FIX DATE TIME
-            df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
-            df["Time"] = pd.to_datetime(df["Time"], format="%H:%M:%S", errors="coerce").dt.time
+                df["DateTime"] = pd.to_datetime(
+                    df["Date"].astype(str) + " " + df["Time"].astype(str),
+                    errors="coerce"
+                )
 
-            df["DateTime"] = pd.to_datetime(
-                df["Date"].astype(str) + " " + df["Time"].astype(str),
-                errors="coerce"
-            )
+                df = df.dropna()
 
-            df = df.dropna(subset=["DateTime"])
+                last = df.sort_values(by="DateTime", ascending=False).iloc[0]
 
-            last_entry = df.sort_values(by="DateTime", ascending=False).iloc[0]
+                col1, col2, col3 = st.columns(3)
 
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("Total Records", len(df))
-
-            with col2:
-                st.metric("Unique Users", df["Name"].nunique())
-
-            with col3:
-                st.metric("Last Entry",
-                          last_entry["DateTime"].strftime("%d %b %Y, %I:%M %p"))
+                col1.metric("Total Records", len(df))
+                col2.metric("Users", df["Name"].nunique())
+                col3.metric("Last Entry", last["DateTime"].strftime("%d %b %Y %I:%M %p"))
 
         else:
-            st.info("No attendance records yet")
+            st.info("No data")
 
     # ---------------- REGISTER ----------------
     elif page == "Register":
@@ -182,18 +170,16 @@ else:
         name = st.text_input("Enter Name")
 
         if st.button("Capture Faces"):
-            st.info("Press 'q' to stop camera")
             capture_faces(name)
-            st.success("Face registered successfully")
+            st.success("Face Registered")
 
     # ---------------- ATTENDANCE ----------------
     elif page == "Attendance":
         st.subheader("🎥 Start Attendance")
 
         if st.button("Start Attendance"):
-            st.info("Press 'q' to exit camera")
             recognize_faces()
-            st.success("Attendance completed")
+            st.success("Attendance Completed")
 
     # ---------------- REPORTS ----------------
     elif page == "Reports":
@@ -205,7 +191,7 @@ else:
             df = pd.read_csv(file_path)
 
             if df.empty:
-                st.warning("No data available")
+                st.warning("No data")
                 st.stop()
 
             # FIX DATE TIME
@@ -217,47 +203,65 @@ else:
                 errors="coerce"
             )
 
-            df = df.dropna(subset=["DateTime"])
+            df = df.dropna()
             df = df.sort_values(by="DateTime", ascending=False)
 
-            st.markdown("### 📄 Raw Attendance Data")
-            st.dataframe(df, use_container_width=True)
+            # 🔍 FILTERS
+            st.markdown("### 🔍 Filters")
+            col1, col2 = st.columns(2)
 
-            # SUMMARY
-            st.markdown("### 📊 Attendance Summary")
+            with col1:
+                search = st.text_input("Search Name")
 
-            summary = df.groupby("Name").agg(
+            with col2:
+                date_filter = st.date_input("Filter Date", value=None)
+
+            filtered_df = df.copy()
+
+            if search:
+                filtered_df = filtered_df[
+                    filtered_df["Name"].str.lower().str.contains(search.lower())
+                ]
+
+            if date_filter:
+                filtered_df = filtered_df[
+                    filtered_df["Date"] == date_filter
+                ]
+
+            st.markdown("### 📄 Data")
+            st.dataframe(filtered_df, use_container_width=True)
+
+            # 📊 SUMMARY
+            summary = filtered_df.groupby("Name").agg(
                 Total_Entries=("Name", "count"),
                 Days_Present=("Date", "nunique")
             ).reset_index()
 
-            total_days = df["Date"].nunique()
+            total_days = filtered_df["Date"].nunique()
 
-            summary["Attendance %"] = ((summary["Days_Present"] / total_days) * 100).round(2)
-            summary["Attendance %"] = summary["Attendance %"].astype(str) + "%"
-
-            summary["Status"] = summary["Days_Present"].apply(
-                lambda x: "🟢 Good" if (x / total_days) * 100 >= 75 else "🔴 Low"
+            summary["Attendance %"] = (summary["Days_Present"] / total_days) * 100
+            summary["Status"] = summary["Attendance %"].apply(
+                lambda x: "Good" if x >= 75 else "Low"
             )
 
-            summary = summary.sort_values(by="Days_Present", ascending=False)
-
-            st.dataframe(summary, use_container_width=True)
+            st.markdown("### 📊 Summary")
+            st.dataframe(summary)
 
             # LAST ENTRY
-            last_entry = df.iloc[0]["DateTime"]
-            st.success(f"🕒 Last Entry: {last_entry.strftime('%d %b %Y | %I:%M %p')}")
+            if not filtered_df.empty:
+                last = filtered_df.iloc[0]["DateTime"]
+                st.success(f"🕒 Last Entry: {last}")
 
             # DOWNLOAD
-            csv = df.to_csv(index=False).encode('utf-8')
+            csv = filtered_df.to_csv(index=False).encode('utf-8')
             st.download_button("Download CSV", csv, "attendance.csv")
 
         else:
-            st.info("No attendance records yet")
+            st.info("No records")
 
 # ---------------- FOOTER ----------------
 st.markdown("""
 ---
-👨‍💻 Project Developed by Kotari Chaitanya Krishna  
-| AI & ML
+👨‍💻 Developed by Kotari Chaitanya Krishna  
+AI & ML Project
 """)
